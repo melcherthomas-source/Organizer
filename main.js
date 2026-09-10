@@ -37,23 +37,42 @@ function cleanSenderName(name,email){
  if(parts.length>=2)return parts.slice(0,3).join(' ');
  return '';
 }
-function parseEml(p){
- const raw=fs.readFileSync(p,'utf8').replace(/\\r\\n/g,'\\n'),parts=raw.split(/\\n\\n/);
- const headers=parts.shift()||'',body=parts.join('\\n\\n');
- const info=parseFromHeader(headers);
- return {subject:headerValue(headers,'Subject'),senderName:cleanSenderName(info.senderName,info.senderEmail),senderEmail:info.senderEmail,body};
+function rawMsgFallback(filePath){
+ const raw=fs.readFileSync(filePath);
+ const text=raw.toString('latin1').replace(/\x00/g,' ');
+ const fromMatch=text.match(/From:\s*([^\r\n]{0,240})/i);
+ const from=parseFromHeader(fromMatch?fromMatch[0]:'');
+ const subject=(text.match(/Subject:\s*([^\r\n]{0,500})/i)||[])[1]||'';
+ const emails=(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[]);
+ const senderEmail=from.senderEmail||emails.find(e=>!e.toLowerCase().endsWith('@caravan-spezialisten.de'))||'';
+ const senderName=cleanSenderName(from.senderName,senderEmail);
+ const chunks=text.split(/\r?\n/).map(s=>s.trim()).filter(s=>s.length>=3 && /[A-Za-zÄÖÜäöüß]/.test(s));
+ const body=chunks.filter(s=>!/^From:|^To:|^Cc:|^Subject:|^Date:|^Message-ID:|^MIME-Version:|^Content-/i.test(s)).slice(-80).join('\n');
+ return {subject:subject.trim(),senderName,senderEmail,body,headers:fromMatch?fromMatch[0]:''};
 }
-ipcMain.handle('inspect-mail-file',async(_,filePath)=>{
- if(!filePath||!fs.existsSync(filePath))throw new Error('Maildatei nicht gefunden.');
- const ext=path.extname(filePath).toLowerCase();
- if(ext==='.msg'||ext==='.oft'){
+function parseMsgFile(filePath){
+ try{
   const msg=new MsgReader(fs.readFileSync(filePath));
   const i=msg.getFileData()||{};
   const h=parseFromHeader(i.headers||'');
   const senderEmail=String(i.senderEmail||'').trim()||h.senderEmail;
   const senderName=cleanSenderName(String(i.senderName||'').trim(),senderEmail)||cleanSenderName(h.senderName,senderEmail);
   return {subject:i.subject||headerValue(i.headers,'Subject')||'',body:i.body||'',senderName,senderEmail,headers:i.headers||''};
+ }catch(err){
+  console.error('MSG-Parser fehlgeschlagen, verwende Fallback:',err);
+  return rawMsgFallback(filePath);
  }
+}
+function parseEml(p){
+ const raw=fs.readFileSync(p,'utf8').replace(/\r\n/g,'\n'),parts=raw.split(/\n\n/);
+ const headers=parts.shift()||'',body=parts.join('\n\n');
+ const info=parseFromHeader(headers);
+ return {subject:headerValue(headers,'Subject'),senderName:cleanSenderName(info.senderName,info.senderEmail),senderEmail:info.senderEmail,body};
+}
+ipcMain.handle('inspect-mail-file',async(_,filePath)=>{
+ if(!filePath||!fs.existsSync(filePath))throw new Error('Maildatei nicht gefunden.');
+ const ext=path.extname(filePath).toLowerCase();
+ if(ext==='.msg'||ext==='.oft')return parseMsgFile(filePath);
  if(ext==='.eml')return parseEml(filePath);
  return null;
 });
