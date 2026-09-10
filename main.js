@@ -17,6 +17,13 @@ function saveFile(sourcePath,name,data){
  return {name:safeFileName(name),path:target};
 }
 function decodeQP(s){return s.replace(/=\r?\n/g,'').replace(/=([A-Fa-f0-9]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)))}
+function parseFromHeader(headers){
+ const from=String(headers||'').match(/^From:\s*(.*)$/im)?.[1]||'';
+ const email=(from.match(/<([^>]+)>/)||[])[1]||((from.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)||[])[0]||'');
+ let senderName=from.replace(/<[^>]+>/,'').replace(email,'').replace(/["']/g,'').trim();
+ senderName=senderName.replace(/^(?:Von|From):\s*/i,'').trim();
+ return {senderName,senderEmail:email};
+}
 function parseEml(p){
  const raw=fs.readFileSync(p,'utf8').replace(/\r\n/g,'\n'),parts=raw.split(/\n\n/),headers=parts.shift()||'',body=parts.join('\n\n');
  const h=n=>{const m=headers.match(new RegExp('^'+n+':\\s*(.*(?:\\n[ \\t]+.*)*)$','im'));return m?m[1].replace(/\n[ \t]+/g,' ').trim():''};
@@ -27,8 +34,15 @@ function parseEml(p){
 ipcMain.handle('inspect-mail-file',async(_,filePath)=>{
  if(!filePath||!fs.existsSync(filePath))throw new Error('Maildatei nicht gefunden.');
  const ext=path.extname(filePath).toLowerCase();
- if(ext==='.msg'||ext==='.oft'){const msg=new MsgReader(fs.readFileSync(filePath));const i=msg.getFileData();return {subject:i.subject||'',body:i.body||'',senderName:i.senderName||'',senderEmail:i.senderEmail||''};}
- if(ext==='.eml')return parseEml(filePath);
+ if(ext==='.msg'||ext==='.oft'){
+   const msg=new MsgReader(fs.readFileSync(filePath));
+   const i=msg.getFileData();
+   const headerInfo=parseFromHeader(i.headers||'');
+   const senderName=String(i.senderName||'').trim()||headerInfo.senderName;
+   const senderEmail=String(i.senderEmail||'').trim()||headerInfo.senderEmail;
+   return {subject:i.subject||'',body:i.body||'',senderName,senderEmail,headers:i.headers||''};
+ }
+ if(ext==='.eml')return parseEml(p);
  return null;
 });
 ipcMain.handle('save-dropped-file',async(_,p)=>saveFile(p?.path,p?.name,p?.data));
