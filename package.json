@@ -3,10 +3,8 @@
   "version": "1.0.0",
   "description": "Aufgaben und R\u00fcckrufe",
   "main": "main.js",
-  "scripts": {
-    "start": "electron .",
-    "dist": "electron-builder --win"
-  },
+  "scripts": "scripts":{"start":"electron .","dist":"electron-builder --win --publish never"},
+  ,
   "devDependencies": {
     "electron": "^38.0.0",
     "electron-builder": "^26.0.12"
