@@ -38,5 +38,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }
+  },
+  "dependencies": {
+    "@kenjiuno/msgreader": "^1.28.0"
   }
 }

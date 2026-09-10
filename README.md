@@ -1,12 +1,24 @@
-# Werkstatt Todo – GitHub EXE
-Enthält die aktuelle hochgeladene HTML-Version als `index.html`, verpackt als Windows-App.
+# Werkstatt Todo
 
-GitHub: Dateien in ein Repository laden → Actions → „Windows EXE bauen“ → Run workflow → nach Abschluss Artifact herunterladen.
+Dunkles Windows-Programm für Aufgaben und Rückrufe.
 
-Die Outlook-Anbindung bleibt offen, bis die Outlook-Version in der Firma geprüft wurde.
+## Funktionen
+- Aufgaben und Rückrufe in zwei Spalten
+- Einheitliche kompakte Karten
+- Name, Telefonnummer, E-Mail
+- Fahrzeug: Kennzeichen, Modell, FIN
+- Wiedervorlage: Morgen, In 3 Tagen oder benutzerdefiniertes Datum
+- Notizen mit Zeitstempel
+- PDF/Dateianhänge
+- Outlook-Mailimport (.msg/.eml/.oft) im Electron-Programm
+- automatische Übernahme von E-Mail und Telefonnummer
+- automatische Zuordnung von Fahrzeugdaten über Kennzeichen
+- Suche über alle Felder
+- Erledigte Einträge landen im Archiv
+- Archiv ist separat aufrufbar, durchsuchbar und öffnet die vollständigen Einträge
+- Archivierte Einträge können wiederhergestellt werden
 
+## GitHub EXE
+Das Projekt wird über GitHub Actions als Windows-EXE gebaut.
 
-Hinweis: Ein E-Mail-Anhang kann nur gespeichert werden, wenn Outlook die gezogene Nachricht als Datei (.msg/.eml/.oft) an die App übergibt. Bei manchen Outlook-/Browser-Varianten wird beim Ziehen nur Text übergeben; dann kann die Original-Mail technisch nicht als Datei gespeichert werden.
-
-
-Enthält Wiedervorlage (Morgen / In 3 Tagen / Benutzerdefiniert), Fahrzeugdaten, Outlook-Import und Filterung interner @caravan-spezialisten.de-Adressen.
+Workflow: **Actions → Windows EXE bauen → Run workflow**.
