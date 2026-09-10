@@ -20,15 +20,14 @@
     "files": [
       "index.html",
       "main.js",
-      "preload.js"
+      "preload.js",
+      "vornamen_de.json"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ]
     },
