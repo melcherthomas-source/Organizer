@@ -56,12 +56,12 @@ label{display:block;font-size:12px;font-weight:700;color:#cbd0d6;margin:11px 0 5
 <div id="existingNotes"></div>
 <label>Neue Notiz</label><textarea id="fNewNote" placeholder="Notiz eingeben…"></textarea>
 <label>PDF anhängen</label><input id="fPdf" type="file" accept="application/pdf" multiple>
-<div class="hint">Beim Ziehen von E-Mails werden Name, Telefonnummer und externe E-Mail automatisch gesucht. Adressen mit @caravan-spezialisten.de werden ignoriert. Wenn Outlook die E-Mail als Datei übergibt (z. B. .msg/.eml), wird sie als Anhang gespeichert.</div>
+<div class="hint">Beim Ziehen von E-Mails werden Name, Telefonnummer und externe E-Mail automatisch gesucht. Adressen mit @caravan-spezialisten.de werden ignoriert. Wenn Outlook die E-Mail als Datei übergibt (z. B. .msg/.eml), wird sie als Anhang gespeichert und beim Speichern der Aufgabe dauerhaft hinterlegt.</div>
 <div class="footer"><button onclick="closeModal()">Abbrechen</button><button class="primary" onclick="saveItem()">Speichern</button></div>
 </div></div>
 
 <script>
-const KEY='werkstattTodoDarkV2';let data=JSON.parse(localStorage.getItem(KEY)||'{"tasks":[],"callbacks":[]}');let currentType='task',currentId=null,dropPayload='';
+const KEY='werkstattTodoDarkV2';let data=JSON.parse(localStorage.getItem(KEY)||'{"tasks":[],"callbacks":[]}');let currentType='task',currentId=null,dropPayload='',prefillCache=null;
 const $=id=>document.getElementById(id);function persist(){localStorage.setItem(KEY,JSON.stringify(data))}
 function now(){return new Date().toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -69,12 +69,12 @@ function copy(t){navigator.clipboard?.writeText(t)}
 function openAttachment(p){if(window.desktopAPI?.openAttachment) window.desktopAPI.openAttachment(p)}
 function openForm(type,id=null,prefill=null){currentType=type;currentId=id;let x=id?data[type+'s'].find(a=>a.id===id):null;
 $('modalTitle').textContent=id?'Eintrag bearbeiten':(type==='task'?'Neue Aufgabe':'Neuer Rückruf');
-let v=x||prefill||{}; $('fName').value=v.name||'';$('fPhone').value=v.phone||'';$('fEmail').value=v.email||'';$('fReason').value=v.reason||'';$('fDue').value=v.due||'';$('fStatus').value=v.status||'open';$('fNewNote').value='';
+let v=x||prefill||{}; prefillCache=v; $('fName').value=v.name||'';$('fPhone').value=v.phone||'';$('fEmail').value=v.email||'';$('fReason').value=v.reason||'';$('fDue').value=v.due||'';$('fStatus').value=v.status||'open';$('fNewNote').value='';
 $('existingNotes').innerHTML=x?.notes?.length?'<label>Verlauf</label>'+x.notes.map(n=>`<div class="note">${esc(n.text)}<br><small>${esc(n.time)}</small></div>`).join(''):'';
 $('modal').classList.add('show')}
 function closeModal(){$('modal').classList.remove('show')}
 function saveItem(){let name=$('fName').value.trim(),reason=$('fReason').value.trim();if(!name||!reason){alert('Bitte Name und Grund ausfüllen.');return}
-let arr=data[currentType+'s'],x=currentId?arr.find(a=>a.id===currentId):{id:crypto.randomUUID(),created:now(),notes:[],files:[]};
+let arr=data[currentType+'s'],x=currentId?arr.find(a=>a.id===currentId):{id:crypto.randomUUID(),created:now(),notes:[],files:Array.isArray((prefillCache||{}).files)?[...(prefillCache.files)]:[]};
 x.name=name;x.phone=$('fPhone').value.trim();x.email=$('fEmail').value.trim();x.reason=reason;x.due=$('fDue').value;x.status=$('fStatus').value;x.updated=now();
 if($('fNewNote').value.trim())x.notes.push({text:$('fNewNote').value.trim(),time:now()});
 for(const f of $('fPdf').files)x.files.push(f.name);
