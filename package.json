@@ -19,7 +19,8 @@
     },
     "files": [
       "index.html",
-      "main.js"
+      "main.js",
+      "preload.js"
     ],
     "win": {
       "target": [

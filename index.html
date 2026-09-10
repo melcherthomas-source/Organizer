@@ -15,6 +15,7 @@ main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:18px;max-width:
 .panelhead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}.panelhead h2{margin:0;font-size:17px}.count{color:var(--muted);font-size:12px}.list{padding:12px}
 .dropzone{border:2px dashed #3b424b;border-radius:10px;padding:13px;text-align:center;color:var(--muted);margin-bottom:12px;background:#15181b;transition:.15s}
 .dropzone.over{border-color:var(--blue);background:#182230;color:#dbeafe}
+.files button{margin-left:6px;padding:3px 7px;font-size:12px}
 .card{background:var(--panel2);border:1px solid var(--line);border-left:6px solid #707780;border-radius:10px;padding:13px;margin:9px 0}.card.open{border-left-color:var(--red)}.card.partial{border-left-color:var(--yellow)}.card.done{border-left-color:var(--green);opacity:.75}
 .name{font-size:16px;font-weight:700}.contact{line-height:1.8;margin-top:4px}.reason{margin-top:7px;white-space:pre-wrap}.meta{color:var(--muted);font-size:12px;margin-top:6px}.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.actions button{font-size:11px;padding:7px 9px}.note{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;color:#d7dbe0}.note small{color:var(--muted)}.files{margin-top:7px;color:#b8c7d9}
 .empty{text-align:center;color:var(--muted);padding:50px 20px}.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:20px;z-index:10}.modal.show{display:flex}.box{width:min(650px,100%);max-height:90vh;overflow:auto;background:#1b1f24;border:1px solid var(--line);border-radius:13px;padding:20px}.box h3{margin:0 0 12px}
@@ -55,7 +56,7 @@ label{display:block;font-size:12px;font-weight:700;color:#cbd0d6;margin:11px 0 5
 <div id="existingNotes"></div>
 <label>Neue Notiz</label><textarea id="fNewNote" placeholder="Notiz eingeben…"></textarea>
 <label>PDF anhängen</label><input id="fPdf" type="file" accept="application/pdf" multiple>
-<div class="hint">Beim Ziehen von Text/E-Mails werden Name, Telefonnummer und E-Mail automatisch gesucht. Betreff und Text werden gemeinsam ausgewertet, soweit Outlook die Daten an den Browser übergibt.</div>
+<div class="hint">Beim Ziehen von E-Mails werden Name, Telefonnummer und externe E-Mail automatisch gesucht. Adressen mit @caravan-spezialisten.de werden ignoriert. Wenn Outlook die E-Mail als Datei übergibt (z. B. .msg/.eml), wird sie als Anhang gespeichert.</div>
 <div class="footer"><button onclick="closeModal()">Abbrechen</button><button class="primary" onclick="saveItem()">Speichern</button></div>
 </div></div>
 
@@ -65,6 +66,7 @@ const $=id=>document.getElementById(id);function persist(){localStorage.setItem(
 function now(){return new Date().toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function copy(t){navigator.clipboard?.writeText(t)}
+function openAttachment(p){if(window.desktopAPI?.openAttachment) window.desktopAPI.openAttachment(p)}
 function openForm(type,id=null,prefill=null){currentType=type;currentId=id;let x=id?data[type+'s'].find(a=>a.id===id):null;
 $('modalTitle').textContent=id?'Eintrag bearbeiten':(type==='task'?'Neue Aufgabe':'Neuer Rückruf');
 let v=x||prefill||{}; $('fName').value=v.name||'';$('fPhone').value=v.phone||'';$('fEmail').value=v.email||'';$('fReason').value=v.reason||'';$('fDue').value=v.due||'';$('fStatus').value=v.status||'open';$('fNewNote').value='';
@@ -81,7 +83,7 @@ function card(x,isCb){return `<div class="card ${x.status}" draggable="true" dat
 <div class="name">${isCb?'📞':'📝'} ${esc(x.name)}</div>
 <div class="contact">${x.phone?`📞 <b>${esc(x.phone)}</b> <button class="copy" onclick='copy(${JSON.stringify(x.phone)})'>Kopieren</button>`:''}${x.email?`<br>✉️ <b>${esc(x.email)}</b> <button class="copy" onclick='copy(${JSON.stringify(x.email)})'>Kopieren</button>`:''}</div>
 <div class="reason">${esc(x.reason)}</div>${x.due?`<div class="meta">🔔 Wiedervorlage: ${esc(new Date(x.due).toLocaleString('de-DE'))}</div>`:''}
-${x.files?.length?`<div class="files">📎 ${x.files.map(esc).join(', ')}</div>`:''}
+${x.files?.length?`<div class="files">📎 ${x.files.map(f=>{let o=typeof f==='string'?{name:f}:f;return o.path?`<button onclick='openAttachment(${JSON.stringify(o.path)})'>${esc(o.name)}</button>`:esc(o.name)}).join(' ')}</div>`:''}
 <div class="actions">${isCb?`<button class="danger" onclick="notReached('${x.id}')">📵 Nicht erreicht</button>`:''}<button class="warn" onclick="setStatus('${isCb?'callback':'task'}','${x.id}','partial')">🟡 Teilerledigt</button><button class="ok" onclick="complete('${isCb?'callback':'task'}','${x.id}')">✅ Erledigt</button><button onclick="openForm('${isCb?'callback':'task'}','${x.id}')">✏️ Bearbeiten</button></div>
 ${x.notes?.length?`<div class="note"><b>Letzte Notiz:</b> ${esc(x.notes.at(-1).text)}<br><small>${esc(x.notes.at(-1).time)}</small></div>`:''}
 </div>`}
@@ -97,7 +99,10 @@ function render(){updateStats();let q=$('search').value.toLowerCase();for(const 
 function setStatus(type,id,s){let x=data[type+'s'].find(a=>a.id===id);x.status=s;x.updated=now();persist();render()}
 function complete(type,id){let x=data[type+'s'].find(a=>a.id===id);x.status='done';x.archived=true;x.completed=now();persist();render()}
 function notReached(id){let x=data.callbacks.find(a=>a.id===id);x.notes.push({text:'📵 Nicht erreicht',time:now()});persist();render()}
-function parseText(t){t=t||'';let email=(t.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)||[])[0]||'';
+function parseText(t){
+let emails=[...new Set((t.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[]))];
+emails=emails.filter(e=>!/@caravan-spezialisten\.de$/i.test(e));
+let email=emails[0]||'';
 let phones=(t.match(/(?:\+49|0049|0)[\s./()-]*\d(?:[\d\s./()-]{5,}\d)/g)||[]).map(s=>s.trim()).filter(s=>s.replace(/\D/g,'').length>=7);
 let phone=phones[0]||'';
 let lines=t.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);let subject=lines.find(l=>/^betreff\s*:/i.test(l))?.replace(/^betreff\s*:\s*/i,'')||lines[0]||'';
@@ -105,11 +110,34 @@ let name='';
 let nm=t.match(/(?:herr|frau)\s+([A-ZÄÖÜ][\wÄÖÜäöüß.-]+(?:\s+[A-ZÄÖÜ][\wÄÖÜäöüß.-]+){0,2})/i);if(nm)name=nm[1].trim();
 if(!name){let m=subject.match(/(?:rückruf|rueckruf)\s+(.+?)(?=\s+(?:wegen|wg\.?|tel|telefon|0\d|\+49)|$)/i);if(m)name=m[1].trim()}
 if(!name&&lines.length)name=lines[0].replace(/^betreff\s*:\s*/i,'').replace(/^(rückruf|rueckruf)\s*/i,'').trim();
-let reason=subject&&subject!==name?subject:t.replace(email,'').replace(phone,'').trim().slice(0,500);
+let reason=subject&&subject!==name?subject:t.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,'').replace(phone,'').trim().slice(0,500);
 return {name:name||'Unbekannter Kontakt',phone,email,reason:reason||'Aus Outlook importiert',status:'open',notes:[{text:'Aus Outlook/Text übernommen',time:now()}],files:[]}}
-function handleDrop(e,type){e.preventDefault();e.currentTarget.classList.remove('over');let txt=e.dataTransfer.getData('text/plain')||e.dataTransfer.getData('text/html')||'';let files=[...e.dataTransfer.files];
-if(files.length){let pdfs=files.filter(f=>f.type==='application/pdf').map(f=>f.name);let text=txt||files.map(f=>f.name).join('\n');let p=parseText(text);p.files=pdfs;openForm(type,null,p);return}
-if(txt){openForm(type,null,parseText(txt));}else alert('Die gezogenen Daten konnten nicht gelesen werden. Ziehe die E-Mail möglichst direkt aus Outlook auf die markierte Fläche.')}
+
+async function handleDrop(e,type){
+e.preventDefault();e.currentTarget.classList.remove('over');
+let txt=e.dataTransfer.getData('text/plain')||e.dataTransfer.getData('text/html')||'';
+let files=[...e.dataTransfer.files];
+let p=parseText(txt||files.map(f=>f.name).join('\n'));
+if(files.length){
+  let saved=[];
+  for(const f of files){
+    const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);
+    const isEmail=/\.(msg|eml|oft)$/i.test(f.name)||/message\/rfc822/i.test(f.type);
+    if(isPdf || isEmail){
+      try{
+        let payload={name:f.name,path:f.path};
+        if(!payload.path && f.arrayBuffer) payload.data=Array.from(new Uint8Array(await f.arrayBuffer()));
+        if(window.desktopAPI?.saveDroppedFile){saved.push(await window.desktopAPI.saveDroppedFile(payload));}
+        else saved.push({name:f.name});
+      }catch(err){console.error(err);}
+    }
+  }
+  p.files=saved;
+  openForm(type,null,p);
+  return;
+}
+if(txt){openForm(type,null,p);}else alert('Die gezogenen Daten konnten nicht gelesen werden. Ziehe die E-Mail möglichst direkt aus Outlook auf die markierte Fläche.')}
+
 document.querySelectorAll('.dropzone').forEach(z=>{z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over')});z.addEventListener('dragleave',()=>z.classList.remove('over'));z.addEventListener('drop',e=>handleDrop(e,z.dataset.type))});
 document.addEventListener('dragstart',e=>{if(e.target.classList.contains('card'))e.dataTransfer.setData('text/plain',JSON.stringify({type:e.target.dataset.type,id:e.target.dataset.id}))});
 function showArchive(type){let arr=data[type+'s'].filter(x=>x.archived);if(!arr.length){alert('Archiv ist leer.');return}alert((type==='task'?'Aufgaben':'Rückrufe')+'-Archiv:\n\n'+arr.map(x=>`${x.name} – ${x.reason} – erledigt ${x.completed||''}`).join('\n'))}
