@@ -85,9 +85,7 @@ function parseMsgBuffer(raw){
   const msg=new MsgReader(buffer);
   const i=msg.getFileData()||{};
   const h=parseFromHeader(i.headers||'');
-  let senderEmail=String(i.senderEmail||'').trim();
-  if(isInternalEmail(senderEmail))senderEmail='';
-  if(!senderEmail&&!isInternalEmail(h.senderEmail))senderEmail=h.senderEmail;
+  let senderEmail=!isInternalEmail(h.senderEmail)?h.senderEmail:'';
   let senderName=cleanSenderName(String(i.senderName||'').trim(),senderEmail);
   if(!senderName) senderName=cleanSenderName(h.senderName,senderEmail);
   if(!senderName) senderName=detectNameFromText(h.senderName||'',senderEmail);
