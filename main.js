@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path=require('path'), fs=require('fs');
-const MsgReader=require('@kenjiuno/msgreader');
+const MsgReader=require('@kenjiuno/msgreader').default;
 
 const INTERNAL_DOMAIN='@caravan-spezialisten.de';
 let firstNames=new Set();
