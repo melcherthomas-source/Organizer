@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('desktopAPI',{
   return ipcRenderer.invoke('save-dropped-file',p);
  },
  openAttachment:p=>ipcRenderer.invoke('open-attachment',p),
+ openMailto:email=>ipcRenderer.invoke('open-mailto',email),
  getPathForFile:getPathOrToken
 });
 

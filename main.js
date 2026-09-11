@@ -122,5 +122,9 @@ ipcMain.handle('inspect-mail-data',async(_,data)=>{
 });
 ipcMain.handle('save-dropped-file',async(_,p)=>saveFile(p?.path,p?.name,p?.data));
 ipcMain.handle('open-attachment',async(_,p)=>p?shell.openPath(p):undefined);
+ipcMain.handle('open-mailto',async(_,email)=>{
+ if(!email)return;
+ return shell.openExternal('mailto:'+email);
+});
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()})});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});
