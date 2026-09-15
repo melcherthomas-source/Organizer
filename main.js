@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
 const path=require('path'), fs=require('fs');
 const MsgReader=require('@kenjiuno/msgreader').default;
 
@@ -125,6 +125,13 @@ ipcMain.handle('open-attachment',async(_,p)=>p?shell.openPath(p):undefined);
 ipcMain.handle('open-mailto',async(_,email)=>{
  if(!email)return;
  return shell.openExternal('mailto:'+email);
+});
+ipcMain.handle('show-notification',(_,{title,body})=>{
+ if(!Notification.isSupported())return false;
+ const n=new Notification({title:title||'Werkstatt Todo',body:body||''});
+ n.on('click',()=>{const win=BrowserWindow.getAllWindows()[0];if(win){if(win.isMinimized())win.restore();win.show();win.focus()}});
+ n.show();
+ return true;
 });
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()})});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});

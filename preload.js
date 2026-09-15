@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('desktopAPI',{
  },
  openAttachment:p=>ipcRenderer.invoke('open-attachment',p),
  openMailto:email=>ipcRenderer.invoke('open-mailto',email),
+ notify:(title,body)=>ipcRenderer.invoke('show-notification',{title,body}),
  getPathForFile:getPathOrToken
 });
 
