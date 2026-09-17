@@ -474,6 +474,53 @@ class NotizDialog(BaseDialog):
         self.destroy()
 
 
+class NotizArchivDialog(BaseDialog):
+    """Neue Notiz ins Archiv aufnehmen oder eine bestehende bearbeiten.
+    Der Name ist Pflichtfeld – ohne Name keine Speicherung."""
+
+    def __init__(self, parent, on_save, name="", tag="", text="", dialogtitel="Neue Notiz"):
+        super().__init__(parent, dialogtitel)
+        self.on_save = on_save
+
+        self.header("Name (Pflichtfeld)")
+        self.name_entry = StyledEntry(self, width=38)
+        self.name_entry.pack(padx=18, pady=(0, 12), fill="x")
+        self.name_entry.insert(0, name)
+        self.name_entry.focus_set()
+
+        tk.Label(self, text="Tag / Kategorie (optional)", font=F_NORMAL, bg=COLOR_HEADER_BG,
+                 fg=COLOR_TEXT_SECONDARY).pack(anchor="w", padx=18)
+        self.tag_entry = StyledEntry(self, width=38)
+        self.tag_entry.pack(padx=18, pady=(4, 12), fill="x")
+        self.tag_entry.insert(0, tag)
+
+        tk.Label(self, text="Notiz", font=F_NORMAL, bg=COLOR_HEADER_BG,
+                 fg=COLOR_TEXT_SECONDARY).pack(anchor="w", padx=18)
+        self.text_widget = StyledText(self, width=38, height=7)
+        self.text_widget.pack(padx=18, pady=(4, 4), fill="x")
+        self.text_widget.insert("1.0", text)
+
+        self.fehler_label = tk.Label(self, text="", font=F_SMALL, bg=COLOR_HEADER_BG, fg=COLOR_DANGER)
+        self.fehler_label.pack(anchor="w", padx=18, pady=(0, 2))
+
+        self.button_row([
+            ("Abbrechen", COLOR_SURFACE, COLOR_TEXT_SECONDARY, self.destroy),
+            ("Speichern", COLOR_ACCENT, "#FFFFFF", self._speichern),
+        ])
+        self.bind("<Control-Return>", lambda e: self._speichern())
+
+    def _speichern(self):
+        name = self.name_entry.get().strip()
+        if not name:
+            self.fehler_label.config(text="Bitte einen Namen eingeben – ohne Namen keine Speicherung.")
+            self.name_entry.focus_set()
+            return
+        tag = self.tag_entry.get().strip()
+        text = self.text_widget.get("1.0", "end").strip()
+        self.on_save(name, tag, text)
+        self.destroy()
+
+
 class VerlaufDialog(BaseDialog):
     def __init__(self, parent, on_save):
         super().__init__(parent, "Notiz hinzufügen")
@@ -608,7 +655,8 @@ class TodoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Werkstatt To-Do – Aufgaben & Rückrufe")
-        self.root.geometry("1240x800")
+        self.root.geometry("1680x800")
+        self.root.minsize(1100, 640)
         self.root.configure(bg=COLOR_BG)
 
         self.show_erledigt = {"aufgabe": False, "rueckruf": False}
@@ -618,6 +666,7 @@ class TodoApp:
         self._count_holder = {}
         self.expanded_rueckrufe = set()
         self.expanded_aufgaben = set()
+        self.expanded_notizen = set()
         self.search_query = ""
 
         self._build_header()
@@ -654,13 +703,46 @@ class TodoApp:
         columns.pack(fill="both", expand=True, padx=16, pady=16)
         columns.columnconfigure(0, weight=1)
         columns.columnconfigure(1, weight=1)
+        columns.columnconfigure(2, weight=1)
         columns.rowconfigure(0, weight=1)
 
         self.aufgaben_col = self._build_column(columns, "Aufgaben", "aufgabe", ist_rueckruf=False)
         self.aufgaben_col.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
         self.rueckrufe_col = self._build_column(columns, "Rückrufe", "rueckruf", ist_rueckruf=True)
-        self.rueckrufe_col.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        self.rueckrufe_col.grid(row=0, column=1, sticky="nsew", padx=(8, 8))
+
+        self.notizen_col = self._build_notizarchiv_column(columns)
+        self.notizen_col.grid(row=0, column=2, sticky="nsew", padx=(8, 0))
+
+    def _build_notizarchiv_column(self, parent):
+        outer = tk.Frame(parent, bg=COLOR_BG)
+
+        kopf = tk.Frame(outer, bg=COLOR_BG)
+        kopf.pack(fill="x", pady=(0, 10))
+        title_row = tk.Frame(kopf, bg=COLOR_BG)
+        title_row.pack(fill="x")
+        tk.Label(title_row, text="Notizarchiv", font=F_COLUMN_TITLE, bg=COLOR_BG,
+                 fg=COLOR_TEXT_PRIMARY).pack(side="left")
+        count_badge = Pill(title_row, "0", bg=COLOR_ACCENT_LIGHT, fg=COLOR_ACCENT,
+                            container_bg=COLOR_BG, font=F_SMALL, padx=9, pady=3, radius=10)
+        count_badge.pack(side="left", padx=(8, 0))
+        self._count_holder["notiz"] = count_badge
+        tk.Label(kopf, text="Kein aktiver Vorgang – nur zum Nachschlagen (oben durchsuchbar)",
+                 font=F_SMALL, bg=COLOR_BG, fg=COLOR_TEXT_MUTED, wraplength=320,
+                 justify="left", anchor="w").pack(fill="x", pady=(4, 0))
+
+        aktionen = tk.Frame(outer, bg=COLOR_BG)
+        aktionen.pack(fill="x", pady=(8, 10))
+        Pill(aktionen, "+ Neue Notiz", bg=COLOR_ACCENT, fg="#FFFFFF", hover_bg=COLOR_ACCENT_HOVER,
+             container_bg=COLOR_BG, font=F_PILL,
+             command=self._neue_notiz_archiv).pack(side="left")
+
+        scroll = ScrollableFrame(outer, bg=COLOR_BG)
+        scroll.pack(fill="both", expand=True)
+        self.notizen_scroll = scroll
+
+        return outer
 
     def _build_column(self, parent, titel, typ, ist_rueckruf):
         outer = tk.Frame(parent, bg=COLOR_BG)
@@ -896,10 +978,37 @@ class TodoApp:
             db.delete_attachment(attachment_id)
             self.refresh_all()
 
+    # ---------- Notizarchiv ----------
+    def _neue_notiz_archiv(self):
+        def speichern(name, tag, text):
+            db.add_notiz_archiv(name, tag, text)
+            self.refresh_all()
+        NotizArchivDialog(self.root, speichern, dialogtitel="Neue Notiz")
+
+    def _notiz_archiv_bearbeiten(self, row):
+        def speichern(name, tag, text):
+            db.update_notiz_archiv(row["id"], name, tag, text)
+            self.refresh_all()
+        NotizArchivDialog(self.root, speichern, name=row["name"], tag=row["tag"] or "",
+                           text=row["text"] or "", dialogtitel="Notiz bearbeiten")
+
+    def _notiz_archiv_loeschen(self, eintrag_id, name):
+        if messagebox.askyesno("Löschen bestätigen", f"Notiz „{name}“ wirklich löschen?"):
+            db.delete_notiz_archiv(eintrag_id)
+            self.refresh_all()
+
+    def _toggle_expand_notiz(self, eintrag_id):
+        if eintrag_id in self.expanded_notizen:
+            self.expanded_notizen.discard(eintrag_id)
+        else:
+            self.expanded_notizen.add(eintrag_id)
+        self.refresh_all()
+
     # ---------- Rendern ----------
     def refresh_all(self):
         self._render_column(self.aufgaben_scroll, "aufgabe")
         self._render_column(self.rueckrufe_scroll, "rueckruf")
+        self._render_notizarchiv()
 
     def _render_column(self, scroll_frame, typ):
         for widget in scroll_frame.inner.winfo_children():
@@ -946,6 +1055,99 @@ class TodoApp:
             teile.append(eintrag["text"])
         heuhaufen = " ".join(teile).lower()
         return self.search_query in heuhaufen
+
+    def _render_notizarchiv(self):
+        for widget in self.notizen_scroll.inner.winfo_children():
+            widget.destroy()
+
+        alle = db.get_notizarchiv()
+        badge = self._count_holder["notiz"]
+        badge._text = str(len(alle))
+        badge._draw(COLOR_ACCENT_LIGHT, COLOR_ACCENT)
+
+        rows = alle
+        if self.search_query:
+            rows = [r for r in rows if self._treffer_suche_notiz(r)]
+
+        if not rows:
+            if self.search_query:
+                leer = f"Keine Treffer für „{self.search_entry.get().strip()}“."
+            else:
+                leer = "Noch keine Notizen im Archiv."
+            tk.Label(self.notizen_scroll.inner, text=leer, bg=COLOR_BG,
+                     fg=COLOR_TEXT_MUTED, font=F_NORMAL, wraplength=380, justify="left"
+                     ).pack(pady=30)
+            return
+
+        for row in rows:
+            self._render_notiz_archiv_card(self.notizen_scroll.inner, row)
+
+    def _treffer_suche_notiz(self, row):
+        teile = [row["name"] or "", row["tag"] or "", row["text"] or ""]
+        heuhaufen = " ".join(teile).lower()
+        return self.search_query in heuhaufen
+
+    def _render_notiz_archiv_card(self, parent, row):
+        expanded = row["id"] in self.expanded_notizen
+
+        card = RoundedCard(parent, column_bg=COLOR_BG,
+                            accent=COLOR_ACCENT if row["tag"] else None,
+                            accent_width=5, pad=14)
+        card.pack(fill="x", pady=(0, 12))
+        body = card.body
+
+        kopf = tk.Frame(body, bg=COLOR_CARD_BG)
+        kopf.pack(fill="x")
+        name_label = tk.Label(kopf, text=row["name"], font=F_CARD_TITLE, bg=COLOR_CARD_BG,
+                 fg=COLOR_TEXT_PRIMARY, wraplength=280, justify="left", anchor="w")
+        name_label.pack(side="left", fill="x", expand=True)
+        Pill(kopf, "✕", bg=COLOR_CARD_BG, fg=COLOR_TEXT_MUTED, hover_bg=COLOR_DANGER_LIGHT,
+             hover_fg=COLOR_DANGER, container_bg=COLOR_CARD_BG, font=F_SMALL,
+             padx=6, pady=3, radius=10,
+             command=lambda t=row["id"], n=row["name"]: self._notiz_archiv_loeschen(t, n)
+             ).pack(side="right")
+        Pill(kopf, "▾ Einklappen" if expanded else "▸ Details", bg=COLOR_CARD_BG, fg=COLOR_ACCENT,
+             hover_bg=COLOR_ACCENT_LIGHT, container_bg=COLOR_CARD_BG, font=F_SMALL,
+             padx=8, pady=3, radius=10,
+             command=lambda t=row["id"]: self._toggle_expand_notiz(t)).pack(side="right", padx=(0, 4))
+        for w in (kopf, name_label, body):
+            w.configure(cursor="hand2")
+            w.bind("<Button-1>", lambda e, t=row["id"]: self._toggle_expand_notiz(t))
+
+        if row["tag"]:
+            tag_row = tk.Frame(body, bg=COLOR_CARD_BG)
+            tag_row.pack(fill="x", pady=(4, 0), anchor="w")
+            Pill(tag_row, row["tag"], bg=STATUS_INACTIVE_BG, fg=COLOR_TEXT_SECONDARY,
+                 container_bg=COLOR_CARD_BG, font=F_SMALL, padx=8, pady=3, radius=10
+                 ).pack(side="left")
+
+        text = row["text"] or ""
+        if not expanded:
+            vorschau = text.replace("\n", " ").strip()
+            if len(vorschau) > 90:
+                vorschau = vorschau[:90] + "…"
+            if vorschau:
+                vorschau_label = tk.Label(body, text=vorschau, font=F_NORMAL, bg=COLOR_CARD_BG,
+                         fg=COLOR_TEXT_SECONDARY, anchor="w", wraplength=340, justify="left")
+                vorschau_label.pack(fill="x", pady=(4, 0))
+                vorschau_label.configure(cursor="hand2")
+                vorschau_label.bind("<Button-1>", lambda e, t=row["id"]: self._toggle_expand_notiz(t))
+            return
+
+        if text:
+            text_label = tk.Label(body, text=text, font=F_NORMAL, bg=COLOR_CARD_BG,
+                     fg=COLOR_TEXT_SECONDARY, anchor="w", wraplength=340, justify="left")
+            text_label.pack(fill="x", pady=(6, 0))
+
+        datum_text = f"Erstellt: {iso_zu_anzeige_datetime(row['erstellt_am'])}"
+        if row["geaendert_am"]:
+            datum_text += f"   ·   Geändert: {iso_zu_anzeige_datetime(row['geaendert_am'])}"
+        tk.Label(body, text=datum_text, font=F_SMALL, bg=COLOR_CARD_BG, fg=COLOR_TEXT_MUTED,
+                 anchor="w").pack(fill="x", pady=(8, 0))
+
+        Pill(body, "Bearbeiten", bg=COLOR_ACCENT_LIGHT, fg=COLOR_ACCENT,
+             hover_bg=COLOR_ACCENT_LIGHT_HOVER, container_bg=COLOR_CARD_BG, font=F_SMALL,
+             command=lambda r=row: self._notiz_archiv_bearbeiten(r)).pack(anchor="w", pady=(8, 0))
 
     def _toggle_expand(self, task_id, typ="rueckruf"):
         zielset = self.expanded_aufgaben if typ == "aufgabe" else self.expanded_rueckrufe

@@ -76,6 +76,18 @@ def init_db():
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notizarchiv (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            tag TEXT DEFAULT '',
+            text TEXT DEFAULT '',
+            erstellt_am TEXT NOT NULL,
+            geaendert_am TEXT
+        )
+        """
+    )
     conn.commit()
     conn.close()
     os.makedirs(ANHANG_DIR, exist_ok=True)
@@ -233,5 +245,43 @@ def get_notiz_eintraege(task_id):
 def delete_notiz_eintrag(eintrag_id):
     conn = get_connection()
     conn.execute("DELETE FROM notiz_eintraege WHERE id = ?", (eintrag_id,))
+    conn.commit()
+    conn.close()
+
+
+# ---------- Notizarchiv (durchsuchbare Ablage – keine aktive Aufgabe, kein Rueckruf) ----------
+
+def add_notiz_archiv(name, tag="", text=""):
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO notizarchiv (name, tag, text, erstellt_am) VALUES (?, ?, ?, ?)",
+        (name, tag, text, datetime.now().isoformat(timespec="seconds")),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_notizarchiv():
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM notizarchiv ORDER BY name COLLATE NOCASE ASC"
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def update_notiz_archiv(eintrag_id, name, tag, text):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE notizarchiv SET name = ?, tag = ?, text = ?, geaendert_am = ? WHERE id = ?",
+        (name, tag, text, datetime.now().isoformat(timespec="seconds"), eintrag_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_notiz_archiv(eintrag_id):
+    conn = get_connection()
+    conn.execute("DELETE FROM notizarchiv WHERE id = ?", (eintrag_id,))
     conn.commit()
     conn.close()
