@@ -4,10 +4,7 @@ Dunkles Windows-Programm für Aufgaben und Rückrufe.
 
 ## Funktionen
 - Aufgaben und Rückrufe in zwei Spalten
-- Schnelleingang für neue Vorgänge
-- Parkplatz für lose Notizen / Dinge ohne aktive Aufgabe
-- Kunden-/Fahrzeugakte mit Suche über Name, Kennzeichen, Telefon, E-Mail und FIN
-- Kennzeichensuche unabhängig von Bindestrichen und Leerzeichen
+- Einheitliche kompakte Karten
 - Name, Telefonnummer, E-Mail
 - Fahrzeug: Kennzeichen, Modell, FIN
 - Wiedervorlage: Morgen, In 3 Tagen oder benutzerdefiniertes Datum
@@ -21,10 +18,7 @@ Dunkles Windows-Programm für Aufgaben und Rückrufe.
 - Archiv ist separat aufrufbar, durchsuchbar und öffnet die vollständigen Einträge
 - Archivierte Einträge können wiederhergestellt werden
 
-## Daten
-Die laufenden Aufgaben werden wie bisher lokal im Electron-Programm gespeichert. Die vorhandene `todo.db` wird von dieser Oberfläche nicht als Aufgabenquelle verwendet und wird deshalb beim Paketieren nicht benötigt.
-
-## Windows-EXE
-Das Projekt kann über GitHub Actions als Windows-EXE gebaut werden.
+## GitHub EXE
+Das Projekt wird über GitHub Actions als Windows-EXE gebaut.
 
 Workflow: **Actions → Windows EXE bauen → Run workflow**.
