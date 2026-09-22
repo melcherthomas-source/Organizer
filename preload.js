@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld('desktopAPI',{
  openAttachment:p=>ipcRenderer.invoke('open-attachment',p),
  openMailto:email=>ipcRenderer.invoke('open-mailto',email),
  notify:(title,body)=>ipcRenderer.invoke('show-notification',{title,body}),
+ saveBackup:payload=>ipcRenderer.invoke('save-backup',payload),
+ restoreBackup:()=>ipcRenderer.invoke('restore-backup'),
+ openBackupFolder:()=>ipcRenderer.invoke('backup-folder'),
  getPathForFile:getPathOrToken
 });
 

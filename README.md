@@ -22,3 +22,10 @@ Dunkles Windows-Programm für Aufgaben und Rückrufe.
 Das Projekt wird über GitHub Actions als Windows-EXE gebaut.
 
 Workflow: **Actions → Windows EXE bauen → Run workflow**.
+
+## Neue Funktionen (September 2026)
+- Ausklappbare und direkt bearbeitbare Verkaufsliste auf Basis der mitgelieferten Verkaufsliste.
+- Automatische JSON-Backups im Windows-Electron-Benutzerordner, zusätzlich alle 5 Minuten.
+- Backup-Wiederherstellung und Öffnen des Backup-Ordners über die Oberfläche.
+- Testbutton für Windows-Benachrichtigungen.
+- Wiedervorlagen werden alle 15 Sekunden geprüft; fällige Einträge lösen eine Windows-Benachrichtigung aus.

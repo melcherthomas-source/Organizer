@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, dialog } = require('electron');
 const path=require('path'), fs=require('fs');
 const MsgReader=require('@kenjiuno/msgreader').default;
 
@@ -8,6 +8,22 @@ try{
  const list=JSON.parse(fs.readFileSync(path.join(__dirname,'vornamen_de.json'),'utf8'));
  firstNames=new Set(list.map(x=>String(x).toLocaleLowerCase('de-DE')));
 }catch(err){console.error('Vornamenliste konnte nicht geladen werden:',err)}
+
+
+function backupDir(){const dir=path.join(app.getPath('userData'),'Backups');fs.mkdirSync(dir,{recursive:true});return dir;}
+function writeBackup(payload){
+ const dir=backupDir(), stamp=new Date().toISOString().replace(/[:.]/g,'-'), file=path.join(dir,`werkstatt-todo-backup-${stamp}.json`);
+ fs.writeFileSync(file,JSON.stringify(payload,null,2),'utf8');
+ try{const files=fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort().reverse();files.slice(20).forEach(f=>{try{fs.unlinkSync(path.join(dir,f))}catch(_){}})}catch(_){ }
+ return file;
+}
+ipcMain.handle('save-backup',async(_,payload)=>writeBackup(payload||{}));
+ipcMain.handle('restore-backup',async()=>{
+ const r=await dialog.showOpenDialog({title:'Backup auswählen',defaultPath:backupDir(),filters:[{name:'Werkstatt-Backup',extensions:['json']}],properties:['openFile']});
+ if(r.canceled||!r.filePaths[0])return null;
+ return JSON.parse(fs.readFileSync(r.filePaths[0],'utf8'));
+});
+ipcMain.handle('backup-folder',async()=>{const dir=backupDir();await shell.openPath(dir);return dir;});
 
 function createWindow(){
  const win=new BrowserWindow({

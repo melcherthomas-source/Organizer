@@ -21,13 +21,16 @@
       "index.html",
       "main.js",
       "preload.js",
-      "vornamen_de.json"
+      "vornamen_de.json",
+      "verkaufsliste.json"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },

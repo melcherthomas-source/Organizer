@@ -1,0 +1,177 @@
+[
+  {
+    "name": "GAS",
+    "items": [
+      {
+        "name": "Gas Duo Control inkl. Gasfilter",
+        "price": 630.0
+      },
+      {
+        "name": "Gasalarm Pro",
+        "price": 590.0
+      },
+      {
+        "name": "Gasaussenanschluss",
+        "price": 690.0
+      }
+    ]
+  },
+  {
+    "name": "LUFTFEDERUNG",
+    "items": [
+      {
+        "name": "Luftfederung Goldschmitt Zweikreis 8\"",
+        "price": 2290.0
+      },
+      {
+        "name": "Unbedenklichekeitsbescheinigung",
+        "price": 290.0
+      }
+    ]
+  },
+  {
+    "name": "SOLAR",
+    "items": [
+      {
+        "name": "Solarpanel Alden Black Power 140W inkl. Regler Iboost 170",
+        "price": 1490.0
+      },
+      {
+        "name": "Solarpanel Alden Black Power 280W (2x140) inkl. Regler Iboost 170",
+        "price": 2590.0
+      }
+    ]
+  },
+  {
+    "name": "ANHÄNGERKUPPLUNG",
+    "items": [
+      {
+        "name": "Anhängerkupplung Kastenwagen fest",
+        "price": 1490.0
+      },
+      {
+        "name": "Anhängerkupplung Kastenwagen abnehmbar",
+        "price": 1590.0
+      },
+      {
+        "name": "Anhängerkupplung Reisemobil",
+        "price": 2450.0
+      }
+    ]
+  },
+  {
+    "name": "MARKISE",
+    "items": [
+      {
+        "name": "Markise Thule bis 3,20m",
+        "price": 1380.0
+      },
+      {
+        "name": "Markise Thule 3,50m - 370m",
+        "price": 1560.0
+      },
+      {
+        "name": "Markise Thule 4m",
+        "price": 1670.0
+      },
+      {
+        "name": "Markise Thule 4,5m",
+        "price": 1750.0
+      },
+      {
+        "name": "Markise Thule 5m",
+        "price": 2030.0
+      },
+      {
+        "name": "Markise Thule 5,50m",
+        "price": 2390.0
+      }
+    ]
+  },
+  {
+    "name": "SAT ANLAGE  / Wifi I-net",
+    "items": [
+      {
+        "name": "Sat Anlage 60 inkl. 22\" TV",
+        "price": 3450.0
+      },
+      {
+        "name": "I-Net Camp 512 Set",
+        "price": 1750.0
+      }
+    ]
+  },
+  {
+    "name": "DACHKLIMAANLAGE",
+    "items": [
+      {
+        "name": "Truma Aventa Comp. Bis 6 Meter",
+        "price": 3390.0
+      },
+      {
+        "name": "Truma Aventa Comp. + bis 7 Meter",
+        "price": 3590.0
+      },
+      {
+        "name": "Truma Aventa Comfort ab 7 Meter + Heizleistung",
+        "price": 3790.0
+      },
+      {
+        "name": "Mestic RTA-2600i bis 8m",
+        "price": 3100.0
+      }
+    ]
+  },
+  {
+    "name": "RADIO",
+    "items": [
+      {
+        "name": "Doppel Din Radio Xzent",
+        "price": 1490.0
+      },
+      {
+        "name": "Doppel Din Radio Zenec",
+        "price": 1790.0
+      }
+    ]
+  },
+  {
+    "name": "MOVER",
+    "items": [
+      {
+        "name": "Truma Mover Smart M + Power-Set 2.000kg",
+        "price": 3300.0
+      },
+      {
+        "name": "Truma Smart A + Power-Set 2.000kg",
+        "price": 3790.0
+      },
+      {
+        "name": "Truma Mover XT+ Power-Set 2.300",
+        "price": 4580.0
+      }
+    ]
+  },
+  {
+    "name": "HEOSafe",
+    "items": [
+      {
+        "name": "Türsicherung Fahrer + Beifahertür",
+        "price": 335.0
+      }
+    ]
+  },
+  {
+    "name": "Lithium",
+    "items": [
+      {
+        "name": "SOLARWATT Batterie LiFePO4 150 Ah / Zellenheizung Sitzgestell-Montage",
+        "price": 1575.0
+      },
+      {
+        "name": "SOLARWATT Batterie LiFePO4 310 Ah / Zellenheizung Sitzgestell-Montage",
+        "price": 2575.0
+      }
+    ]
+  }
+]
