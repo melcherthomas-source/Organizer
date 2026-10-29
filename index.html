@@ -99,7 +99,7 @@ function activateUser(profile){
  const hasUserData=localStorage.getItem(KEY)!==null;
  if(!localStorage.getItem('werkstattTodoPinMigrationV1')){
   const legacy=localStorage.getItem('werkstattTodoDarkV2');
-  if(!hasUserData&&legacy){try{const old=JSON.parse(legacy);if(Array.isArray(old.tasks)&&Array.isArray(old.callbacks))localStorage.setItem(KEY,JSON.stringify(old));}catch(e){console.error('Alte Aufgaben konnten nicht übernommen werden:',e);}}
+  if(!hasUserData&&legacy){try{const old=JSON.parse(legacy);if(Array.isArray(old.tasks)&&Array.isArray(old.callbacks)){localStorage.setItem(KEY,JSON.stringify(old));localStorage.removeItem('werkstattTodoDarkV2');}}catch(e){console.error('Alte Aufgaben konnten nicht übernommen werden:',e);}}
   localStorage.setItem('werkstattTodoPinMigrationV1','1');
  }
  try{data=JSON.parse(localStorage.getItem(KEY)||'{"tasks":[],"callbacks":[]}');if(!Array.isArray(data.tasks)||!Array.isArray(data.callbacks))throw new Error('invalid');}
