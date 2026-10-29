@@ -30,6 +30,14 @@ contextBridge.exposeInMainWorld('desktopAPI',{
   }
   return ipcRenderer.invoke('save-dropped-file',p);
  },
+ saveAttachment:async p=>{
+  if(p?.path&&String(p.path).startsWith('__dropped_file__')){
+   const data=droppedFiles.get(p.path);
+   if(data)return ipcRenderer.invoke('save-attachment',{...p,path:'',data});
+   throw new Error('Die Datei ist nicht mehr verfügbar. Bitte erneut auswählen.');
+  }
+  return ipcRenderer.invoke('save-attachment',p);
+ },
  openAttachment:p=>ipcRenderer.invoke('open-attachment',p),
  openMailto:email=>ipcRenderer.invoke('open-mailto',email),
  notify:(title,body)=>ipcRenderer.invoke('show-notification',{title,body}),
