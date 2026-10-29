@@ -22,7 +22,7 @@ ipcMain.handle('save-backup',async(_,payload)=>writeBackup(payload||{}));
 
 function pinConfigPath(){return path.join(app.getPath('userData'),'pin-profiles.json');}
 function readPinProfiles(){try{const p=JSON.parse(fs.readFileSync(pinConfigPath(),'utf8'));return Array.isArray(p.profiles)?p.profiles:[]}catch(_){return []}}
-function writePinProfiles(profiles){const file=pinConfigPath(),temp=file+'.tmp';fs.writeFileSync(temp,JSON.stringify({version:1,profiles},null,2),'utf8');fs.renameSync(temp,file);}
+function writePinProfiles(profiles){fs.writeFileSync(pinConfigPath(),JSON.stringify({version:1,profiles},null,2),'utf8');}
 function pinHash(pin,salt){return crypto.scryptSync(String(pin),salt,64).toString('hex');}
 ipcMain.handle('pin-list',async()=>readPinProfiles().map(({id,name})=>({id,name})));
 ipcMain.handle('pin-create',async(_,payload)=>{
