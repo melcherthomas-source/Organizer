@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell, Notification, dialog } = require('electron');
-const path=require('path'), fs=require('fs');
+const path=require('path'), fs=require('fs'), crypto=require('crypto');
 const MsgReader=require('@kenjiuno/msgreader').default;
 
 const INTERNAL_DOMAIN='@caravan-spezialisten.de';
@@ -18,6 +18,29 @@ function writeBackup(payload){
  return file;
 }
 ipcMain.handle('save-backup',async(_,payload)=>writeBackup(payload||{}));
+
+
+function pinConfigPath(){return path.join(app.getPath('userData'),'pin-profiles.json');}
+function readPinProfiles(){try{const p=JSON.parse(fs.readFileSync(pinConfigPath(),'utf8'));return Array.isArray(p.profiles)?p.profiles:[]}catch(_){return []}}
+function writePinProfiles(profiles){const file=pinConfigPath(),temp=file+'.tmp';fs.writeFileSync(temp,JSON.stringify({version:1,profiles},null,2),'utf8');fs.renameSync(temp,file);}
+function pinHash(pin,salt){return crypto.scryptSync(String(pin),salt,64).toString('hex');}
+ipcMain.handle('pin-list',async()=>readPinProfiles().map(({id,name})=>({id,name})));
+ipcMain.handle('pin-create',async(_,payload)=>{
+ const name=String(payload?.name||'').trim().replace(/\s+/g,' ').slice(0,40),pin=String(payload?.pin||'');
+ if(name.length<2)throw new Error('Bitte einen Namen mit mindestens 2 Zeichen eingeben.');
+ if(!/^\d{4}$/.test(pin))throw new Error('Die PIN muss genau 4 Ziffern haben.');
+ const profiles=readPinProfiles();if(profiles.some(p=>p.name.toLocaleLowerCase('de-DE')===name.toLocaleLowerCase('de-DE')))throw new Error('Dieser Benutzername existiert bereits.');
+ const base=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'benutzer';
+ const id=base+'-'+crypto.randomBytes(4).toString('hex'),salt=crypto.randomBytes(16).toString('hex');
+ profiles.push({id,name,salt,hash:pinHash(pin,salt),createdAt:new Date().toISOString()});writePinProfiles(profiles);return {id,name};
+});
+ipcMain.handle('pin-verify',async(_,payload)=>{
+ const profile=readPinProfiles().find(p=>p.id===String(payload?.id||''));if(!profile)return null;
+ const pin=String(payload?.pin||'');if(!/^\d{4}$/.test(pin))return null;
+ const actual=Buffer.from(pinHash(pin,profile.salt),'hex'),expected=Buffer.from(profile.hash,'hex');
+ if(actual.length!==expected.length||!crypto.timingSafeEqual(actual,expected))return null;
+ return {id:profile.id,name:profile.name};
+});
 
 const COLLAB_FILE='V:\\TodoProgramm\\gemeinsam.json';
 function readCollabFile(){if(!fs.existsSync(COLLAB_FILE))return null;const parsed=JSON.parse(fs.readFileSync(COLLAB_FILE,'utf8'));if(!parsed||!Array.isArray(parsed.tasks)||!Array.isArray(parsed.callbacks))throw new Error('Die gemeinsame Aufgaben-Datei ist ungültig.');return parsed;}
