@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld('desktopAPI',{
  openMailto:email=>ipcRenderer.invoke('open-mailto',email),
  notify:(title,body)=>ipcRenderer.invoke('show-notification',{title,body}),
  saveBackup:payload=>ipcRenderer.invoke('save-backup',payload),
+ readSharedTasks:()=>ipcRenderer.invoke('collab-read'),
+ saveSharedTasks:payload=>ipcRenderer.invoke('collab-save',payload),
  restoreBackup:()=>ipcRenderer.invoke('restore-backup'),
  openBackupFolder:()=>ipcRenderer.invoke('backup-folder'),
  getPathForFile:getPathOrToken
