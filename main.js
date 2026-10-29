@@ -18,6 +18,14 @@ function writeBackup(payload){
  return file;
 }
 ipcMain.handle('save-backup',async(_,payload)=>writeBackup(payload||{}));
+
+const COLLAB_FILE='V:\\TodoProgramm\\gemeinsam.json';
+function readCollabFile(){if(!fs.existsSync(COLLAB_FILE))return null;const parsed=JSON.parse(fs.readFileSync(COLLAB_FILE,'utf8'));if(!parsed||!Array.isArray(parsed.tasks)||!Array.isArray(parsed.callbacks))throw new Error('Die gemeinsame Aufgaben-Datei ist ungültig.');return parsed;}
+function mergeCollabLists(existing,incoming){const map=new Map();for(const item of [...(existing||[]),...(incoming||[])]){if(!item||!item.id||item.scope==='private')continue;const previous=map.get(item.id),a=Number(previous?.updatedAt)||0,b=Number(item.updatedAt)||0;if(!previous||b>=a)map.set(item.id,{...item,scope:'shared'});}return [...map.values()];}
+async function acquireCollabLock(lockPath){const started=Date.now();while(Date.now()-started<10000){try{return fs.openSync(lockPath,'wx')}catch(err){if(err.code!=='EEXIST')throw err;try{if(Date.now()-fs.statSync(lockPath).mtimeMs>30000)fs.unlinkSync(lockPath)}catch(_){}await new Promise(resolve=>setTimeout(resolve,150));}}throw new Error('Die gemeinsame Aufgaben-Datei ist gerade gesperrt. Bitte in wenigen Sekunden erneut versuchen.');}
+ipcMain.handle('collab-read',async()=>readCollabFile());
+ipcMain.handle('collab-save',async(_,incoming)=>{const dir=path.dirname(COLLAB_FILE),lockPath=COLLAB_FILE+'.lock';if(!fs.existsSync(dir))throw new Error('Der Netzlaufwerk-Ordner V:\\TodoProgramm wurde nicht gefunden.');const lock=await acquireCollabLock(lockPath);try{const existing=readCollabFile()||{version:1,tasks:[],callbacks:[]};const merged={version:1,updatedAt:new Date().toISOString(),tasks:mergeCollabLists(existing.tasks,incoming?.tasks),callbacks:mergeCollabLists(existing.callbacks,incoming?.callbacks)};const temp=COLLAB_FILE+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(merged,null,2),'utf8');fs.renameSync(temp,COLLAB_FILE);return merged;}finally{try{fs.closeSync(lock)}catch(_){}try{fs.unlinkSync(lockPath)}catch(_){}}});
+
 ipcMain.handle('restore-backup',async()=>{
  const r=await dialog.showOpenDialog({title:'Backup auswählen',defaultPath:backupDir(),filters:[{name:'Werkstatt-Backup',extensions:['json']}],properties:['openFile']});
  if(r.canceled||!r.filePaths[0])return null;
