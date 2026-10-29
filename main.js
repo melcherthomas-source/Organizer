@@ -168,6 +168,21 @@ ipcMain.handle('inspect-mail-data',async(_,data)=>{
  return parseEmlBuffer(raw);
 });
 ipcMain.handle('save-dropped-file',async(_,p)=>saveFile(p?.path,p?.name,p?.data));
+function attachmentDirectory(scope,userId){
+ if(scope==='shared')return path.join(path.dirname(COLLAB_FILE),'attachments');
+ const uid=String(userId||'default').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80)||'default';
+ return path.join(app.getPath('userData'),'attachments',uid);
+}
+ipcMain.handle('save-attachment',async(_,p={})=>{
+ const name=safeFileName(p.name||'Anhang'),scope=p.scope==='shared'?'shared':'private',dir=attachmentDirectory(scope,p.userId);
+ if(p.path&&fs.existsSync(p.path)&&path.dirname(path.resolve(p.path))===path.resolve(dir))return {name,path:path.resolve(p.path),scope};
+ fs.mkdirSync(dir,{recursive:true});
+ const target=path.join(dir,Date.now()+'-'+crypto.randomBytes(4).toString('hex')+'-'+name);
+ if(p.path&&fs.existsSync(p.path))fs.copyFileSync(p.path,target);
+ else if(p.data)fs.writeFileSync(target,Buffer.from(p.data));
+ else throw new Error('Die Datei ist nicht mehr verfügbar. Bitte den Anhang erneut auswählen.');
+ return {name,path:target,scope};
+});
 ipcMain.handle('open-attachment',async(_,p)=>p?shell.openPath(p):undefined);
 ipcMain.handle('open-mailto',async(_,email)=>{
  if(!email)return;
