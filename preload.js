@@ -30,10 +30,23 @@ contextBridge.exposeInMainWorld('desktopAPI',{
   }
   return ipcRenderer.invoke('save-dropped-file',p);
  },
+ saveAttachment:async p=>{
+  if(p?.path&&String(p.path).startsWith('__dropped_file__')){
+   const data=droppedFiles.get(p.path);
+   if(data)return ipcRenderer.invoke('save-attachment',{...p,path:'',data});
+   throw new Error('Die Datei ist nicht mehr verfügbar. Bitte erneut auswählen.');
+  }
+  return ipcRenderer.invoke('save-attachment',p);
+ },
  openAttachment:p=>ipcRenderer.invoke('open-attachment',p),
  openMailto:email=>ipcRenderer.invoke('open-mailto',email),
  notify:(title,body)=>ipcRenderer.invoke('show-notification',{title,body}),
+ getPinProfiles:()=>ipcRenderer.invoke('pin-list'),
+ createPinProfile:payload=>ipcRenderer.invoke('pin-create',payload),
+ verifyPin:payload=>ipcRenderer.invoke('pin-verify',payload),
  saveBackup:payload=>ipcRenderer.invoke('save-backup',payload),
+ readSharedTasks:()=>ipcRenderer.invoke('collab-read'),
+ saveSharedTasks:payload=>ipcRenderer.invoke('collab-save',payload),
  restoreBackup:()=>ipcRenderer.invoke('restore-backup'),
  openBackupFolder:()=>ipcRenderer.invoke('backup-folder'),
  getPathForFile:getPathOrToken

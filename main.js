@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell, Notification, dialog } = require('electron');
-const path=require('path'), fs=require('fs');
+const path=require('path'), fs=require('fs'), crypto=require('crypto');
 const MsgReader=require('@kenjiuno/msgreader').default;
 
 const INTERNAL_DOMAIN='@caravan-spezialisten.de';
@@ -18,6 +18,37 @@ function writeBackup(payload){
  return file;
 }
 ipcMain.handle('save-backup',async(_,payload)=>writeBackup(payload||{}));
+
+
+function pinConfigPath(){return path.join(app.getPath('userData'),'pin-profiles.json');}
+function readPinProfiles(){try{const p=JSON.parse(fs.readFileSync(pinConfigPath(),'utf8'));return Array.isArray(p.profiles)?p.profiles:[]}catch(_){return []}}
+function writePinProfiles(profiles){fs.writeFileSync(pinConfigPath(),JSON.stringify({version:1,profiles},null,2),'utf8');}
+function pinHash(pin,salt){return crypto.scryptSync(String(pin),salt,64).toString('hex');}
+ipcMain.handle('pin-list',async()=>readPinProfiles().map(({id,name})=>({id,name})));
+ipcMain.handle('pin-create',async(_,payload)=>{
+ const name=String(payload?.name||'').trim().replace(/\s+/g,' ').slice(0,40),pin=String(payload?.pin||'');
+ if(name.length<2)throw new Error('Bitte einen Namen mit mindestens 2 Zeichen eingeben.');
+ if(!/^\d{4}$/.test(pin))throw new Error('Die PIN muss genau 4 Ziffern haben.');
+ const profiles=readPinProfiles();if(profiles.some(p=>p.name.toLocaleLowerCase('de-DE')===name.toLocaleLowerCase('de-DE')))throw new Error('Dieser Benutzername existiert bereits.');
+ const base=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'benutzer';
+ const id=base+'-'+crypto.randomBytes(4).toString('hex'),salt=crypto.randomBytes(16).toString('hex');
+ profiles.push({id,name,salt,hash:pinHash(pin,salt),createdAt:new Date().toISOString()});writePinProfiles(profiles);return {id,name};
+});
+ipcMain.handle('pin-verify',async(_,payload)=>{
+ const profile=readPinProfiles().find(p=>p.id===String(payload?.id||''));if(!profile)return null;
+ const pin=String(payload?.pin||'');if(!/^\d{4}$/.test(pin))return null;
+ const actual=Buffer.from(pinHash(pin,profile.salt),'hex'),expected=Buffer.from(profile.hash,'hex');
+ if(actual.length!==expected.length||!crypto.timingSafeEqual(actual,expected))return null;
+ return {id:profile.id,name:profile.name};
+});
+
+const COLLAB_FILE='V:\\TodoProgramm\\gemeinsam.json';
+function readCollabFile(){if(!fs.existsSync(COLLAB_FILE))return null;const parsed=JSON.parse(fs.readFileSync(COLLAB_FILE,'utf8'));if(!parsed||!Array.isArray(parsed.tasks)||!Array.isArray(parsed.callbacks))throw new Error('Die gemeinsame Aufgaben-Datei ist ungültig.');return parsed;}
+function mergeCollabLists(existing,incoming){const map=new Map();for(const item of [...(existing||[]),...(incoming||[])]){if(!item||!item.id||item.scope==='private')continue;const previous=map.get(item.id),a=Number(previous?.updatedAt)||0,b=Number(item.updatedAt)||0;if(!previous||b>=a)map.set(item.id,{...item,scope:'shared'});}return [...map.values()];}
+async function acquireCollabLock(lockPath){const started=Date.now();while(Date.now()-started<10000){try{return fs.openSync(lockPath,'wx')}catch(err){if(err.code!=='EEXIST')throw err;try{if(Date.now()-fs.statSync(lockPath).mtimeMs>30000)fs.unlinkSync(lockPath)}catch(_){}await new Promise(resolve=>setTimeout(resolve,150));}}throw new Error('Die gemeinsame Aufgaben-Datei ist gerade gesperrt. Bitte in wenigen Sekunden erneut versuchen.');}
+ipcMain.handle('collab-read',async()=>readCollabFile());
+ipcMain.handle('collab-save',async(_,incoming)=>{const dir=path.dirname(COLLAB_FILE),lockPath=COLLAB_FILE+'.lock';if(!fs.existsSync(dir))throw new Error('Der Netzlaufwerk-Ordner V:\\TodoProgramm wurde nicht gefunden.');const lock=await acquireCollabLock(lockPath);try{const existing=readCollabFile()||{version:1,tasks:[],callbacks:[]};const merged={version:1,updatedAt:new Date().toISOString(),tasks:mergeCollabLists(existing.tasks,incoming?.tasks),callbacks:mergeCollabLists(existing.callbacks,incoming?.callbacks)};const temp=COLLAB_FILE+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(merged,null,2),'utf8');fs.renameSync(temp,COLLAB_FILE);return merged;}finally{try{fs.closeSync(lock)}catch(_){}try{fs.unlinkSync(lockPath)}catch(_){}}});
+
 ipcMain.handle('restore-backup',async()=>{
  const r=await dialog.showOpenDialog({title:'Backup auswählen',defaultPath:backupDir(),filters:[{name:'Werkstatt-Backup',extensions:['json']}],properties:['openFile']});
  if(r.canceled||!r.filePaths[0])return null;
@@ -137,6 +168,21 @@ ipcMain.handle('inspect-mail-data',async(_,data)=>{
  return parseEmlBuffer(raw);
 });
 ipcMain.handle('save-dropped-file',async(_,p)=>saveFile(p?.path,p?.name,p?.data));
+function attachmentDirectory(scope,userId){
+ if(scope==='shared')return path.join(path.dirname(COLLAB_FILE),'attachments');
+ const uid=String(userId||'default').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80)||'default';
+ return path.join(app.getPath('userData'),'attachments',uid);
+}
+ipcMain.handle('save-attachment',async(_,p={})=>{
+ const name=safeFileName(p.name||'Anhang'),scope=p.scope==='shared'?'shared':'private',dir=attachmentDirectory(scope,p.userId);
+ if(p.path&&fs.existsSync(p.path)&&path.dirname(path.resolve(p.path))===path.resolve(dir))return {name,path:path.resolve(p.path),scope};
+ fs.mkdirSync(dir,{recursive:true});
+ const target=path.join(dir,Date.now()+'-'+crypto.randomBytes(4).toString('hex')+'-'+name);
+ if(p.path&&fs.existsSync(p.path))fs.copyFileSync(p.path,target);
+ else if(p.data)fs.writeFileSync(target,Buffer.from(p.data));
+ else throw new Error('Die Datei ist nicht mehr verfügbar. Bitte den Anhang erneut auswählen.');
+ return {name,path:target,scope};
+});
 ipcMain.handle('open-attachment',async(_,p)=>p?shell.openPath(p):undefined);
 ipcMain.handle('open-mailto',async(_,email)=>{
  if(!email)return;
