@@ -43,7 +43,7 @@ ipcMain.handle('pin-verify',async(_,payload)=>{
 });
 
 const COLLAB_FILE='V:\\TodoProgramm\\gemeinsam.json';
-function readCollabFile(){if(!fs.existsSync(COLLAB_FILE))return null;const parsed=JSON.parse(fs.readFileSync(COLLAB_FILE,'utf8'));if(!parsed||!Array.isArray(parsed.tasks)||!Array.isArray(parsed.callbacks))throw new Error('Die gemeinsame Aufgaben-Datei ist ungültig.');return parsed;}
+function readCollabFile(){if(!fs.existsSync(COLLAB_FILE))return null;const parsed=JSON.parse(fs.readFileSync(COLLAB_FILE,'utf8'));if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('Die gemeinsame Aufgaben-Datei muss ein JSON-Objekt enthalten.');if(!Array.isArray(parsed.tasks)||!Array.isArray(parsed.callbacks))throw new Error('Die Datei gemeinsam.json benötigt die Listen "tasks" und "callbacks". Bitte die Datei nicht löschen oder überschreiben.');return parsed;}
 function mergeCollabLists(existing,incoming){const map=new Map();for(const item of [...(existing||[]),...(incoming||[])]){if(!item||!item.id||item.scope==='private')continue;const previous=map.get(item.id),a=Number(previous?.updatedAt)||0,b=Number(item.updatedAt)||0;if(!previous||b>=a)map.set(item.id,{...item,scope:'shared'});}return [...map.values()];}
 async function acquireCollabLock(lockPath){const started=Date.now();while(Date.now()-started<10000){try{return fs.openSync(lockPath,'wx')}catch(err){if(err.code!=='EEXIST')throw err;try{if(Date.now()-fs.statSync(lockPath).mtimeMs>30000)fs.unlinkSync(lockPath)}catch(_){}await new Promise(resolve=>setTimeout(resolve,150));}}throw new Error('Die gemeinsame Aufgaben-Datei ist gerade gesperrt. Bitte in wenigen Sekunden erneut versuchen.');}
 ipcMain.handle('collab-read',async()=>readCollabFile());
