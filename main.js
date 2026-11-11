@@ -183,7 +183,7 @@ ipcMain.handle('save-attachment',async(_,p={})=>{
  else throw new Error('Die Datei ist nicht mehr verfügbar. Bitte den Anhang erneut auswählen.');
  return {name,path:target,scope};
 });
-ipcMain.handle('open-attachment',async(_,p)=>p?shell.openPath(p):undefined);
+ipcMain.handle('open-attachment',async(_,p)=>{if(!p)return 'Kein Dateipfad vorhanden.';if(!fs.existsSync(p))return 'Anhang nicht gefunden: '+p;return shell.openPath(p)});
 ipcMain.handle('open-mailto',async(_,email)=>{
  if(!email)return;
  return shell.openExternal('mailto:'+email);
