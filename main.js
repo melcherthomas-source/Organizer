@@ -49,6 +49,25 @@ async function acquireCollabLock(lockPath){const started=Date.now();while(Date.n
 ipcMain.handle('collab-read',async()=>readCollabFile());
 ipcMain.handle('collab-save',async(_,incoming)=>{const dir=path.dirname(COLLAB_FILE),lockPath=COLLAB_FILE+'.lock';if(!fs.existsSync(dir))throw new Error('Der Netzlaufwerk-Ordner V:\\TodoProgramm wurde nicht gefunden.');const lock=await acquireCollabLock(lockPath);try{const existing=readCollabFile()||{version:1,tasks:[],callbacks:[]};const merged={version:1,updatedAt:new Date().toISOString(),tasks:mergeCollabLists(existing.tasks,incoming?.tasks),callbacks:mergeCollabLists(existing.callbacks,incoming?.callbacks)};const temp=COLLAB_FILE+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(merged,null,2),'utf8');fs.renameSync(temp,COLLAB_FILE);return merged;}finally{try{fs.closeSync(lock)}catch(_){}try{fs.unlinkSync(lockPath)}catch(_){}}});
 
+ipcMain.handle('collab-delete',async(_,payload)=>{
+ const type=payload?.type==='callbacks'?'callbacks':'tasks',id=payload?.id,signature=payload?.signature;
+ const lockPath=COLLAB_FILE+'.lock',lock=await acquireCollabLock(lockPath);
+ try{
+  const existing=readCollabFile();if(!existing)return {deleted:false};
+  const arr=existing[type];
+  const index=arr.findIndex(item=>item&&((id&&item.id===id)||(!id&&JSON.stringify(item)===signature)));
+  if(index<0)return {deleted:false};
+  const item=arr[index];
+  const stamp=Date.now();
+  const backup=COLLAB_FILE+'.before-delete-'+stamp+'.bak';
+  fs.copyFileSync(COLLAB_FILE,backup);
+  if(item.id){arr[index]={id:item.id,scope:'shared',deleted:true,updatedAt:stamp};}
+  else arr.splice(index,1);
+  existing.updatedAt=new Date().toISOString();
+  const temp=COLLAB_FILE+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(existing,null,2),'utf8');fs.renameSync(temp,COLLAB_FILE);
+  return {deleted:true,backup};
+ }finally{try{fs.closeSync(lock)}catch(_){}try{fs.unlinkSync(lockPath)}catch(_){}}
+});
 ipcMain.handle('restore-backup',async()=>{
  const r=await dialog.showOpenDialog({title:'Backup auswählen',defaultPath:backupDir(),filters:[{name:'Werkstatt-Backup',extensions:['json']}],properties:['openFile']});
  if(r.canceled||!r.filePaths[0])return null;
