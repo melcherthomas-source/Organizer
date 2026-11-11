@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('desktopAPI',{
  saveBackup:payload=>ipcRenderer.invoke('save-backup',payload),
  readSharedTasks:()=>ipcRenderer.invoke('collab-read'),
  saveSharedTasks:payload=>ipcRenderer.invoke('collab-save',payload),
+ deleteSharedTask:payload=>ipcRenderer.invoke('collab-delete',payload),
  restoreBackup:()=>ipcRenderer.invoke('restore-backup'),
  openBackupFolder:()=>ipcRenderer.invoke('backup-folder'),
  getPathForFile:getPathOrToken
